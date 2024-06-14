@@ -1,0 +1,51 @@
+#include <iostream>
+#include <string>
+#include <pthread.h>
+#include <chrono>
+#include <MLFQmutex.h>
+#include <vector>
+#include <random>
+#include <stdio.h>
+#include <unistd.h>
+using namespace std;
+
+
+MLFQMutex _lock(7, 1); // number of levels in MLFQ and time span for each level
+
+void* worker(void* args) { 
+    long id = (long) args;
+    //cout << "Thread with program ID: "<<id<<" and thread ID: "<< pthread_self()<<" started."<<endl;
+    double sleep_time = (id+1);
+    for (int i = 0; i < 3; i++) {
+        _lock.lock();
+        cout << "Thread with program ID:" << id << " acquired lock" << endl;
+        cout.flush();
+        sleep(sleep_time);
+        cout << "Thread with program ID:" << id << " releasing lock" << endl;
+        cout.flush();
+        _lock.unlock();
+    }
+    return NULL;
+}
+
+
+int main() {
+
+    // replace thread with pthread
+    vector<pthread_t> threads;
+    chrono::high_resolution_clock::time_point begin = chrono::high_resolution_clock::now();
+
+    for (long i = 0; i < 3; i++) {
+        pthread_t thread;
+        pthread_create(&thread, NULL, worker, (void*)i);
+        threads.push_back(thread);
+    }
+
+    for (int i = 0; i < 3; i++) {
+        pthread_join(threads[i], NULL);
+    }
+    chrono::high_resolution_clock::time_point end = chrono::high_resolution_clock::now();
+    double duration = chrono::duration_cast<chrono::duration<double>>(end - begin).count();
+    cout<<"Threads terminated. Total duration is: "<< duration<<" seconds."<<endl;
+    return 0;
+}
